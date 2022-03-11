@@ -38,9 +38,9 @@ class Board:
         """ Devolve os valores imediatamente abaixo e acima, 
         respectivamente. """
         numbers = ()
-        for y in (col-1, col+1):
+        for x in (row-1, row+1):
             try:
-                numbers += (self.get_number(row, y),)
+                numbers += (self.get_number(x, col),)
             except IndexError:
                 numbers += (None,)
         return numbers
@@ -50,18 +50,24 @@ class Board:
         """ Devolve os valores imediatamente à esquerda e à direita, 
         respectivamente. """
         numbers = ()
-        for x in (row-1, row+1):
+        for y in (col-1, col+1):
             try:
-                numbers += (self.get_number(x, col),)
+                numbers += (self.get_number(row, y),)
             except IndexError:
                 numbers += (None,)
         return numbers
     
+
+    def print_board(self):
+        """ Imprime o tabuleiro na consola. """
+        for row in self._board:
+            print("\t".join([str(number) for number in row]))
+    
+
     @staticmethod    
     def parse_instance(filename: str):
         """ Lê o ficheiro cujo caminho é passado como argumento e retorna
         uma instância da classe Board. """
-        # TODO
         with open(filename, "r") as f:
             lines = f.readlines()
             dim = int(lines[0])
@@ -73,6 +79,8 @@ class Board:
                 assert(len(line) == dim)
                 board.append([int(x) for x in line])
         return Board(board)
+
+
 
     # TODO: outros metodos da classe
 
@@ -118,4 +126,5 @@ if __name__ == "__main__":
     # Retirar a solução a partir do nó resultante,
     # Imprimir para o standard output no formato indicado.
     board = Board.parse_instance(sys.argv[1])
+    board.print_board()
     pass
