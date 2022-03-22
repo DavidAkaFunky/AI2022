@@ -106,7 +106,7 @@ class Board:
 
 
 
-    # TODO: outros metodos da classe
+    # TODO:outros metodos da classe
 
 
 class Numbrix(Problem):
