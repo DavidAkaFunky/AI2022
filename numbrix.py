@@ -160,10 +160,6 @@ class Board:
                     # É uma action possivel
                     actions += ((position[0],position[1],number),)
 
-        print(row,col)
-        print(actions)
-        
-
         return actions
 
     
@@ -219,9 +215,9 @@ class Numbrix(Problem):
         partir do estado passado como argumento. """
 
         # Numbers already used
-        boardNumbers = state.get_board().get_numbers()
+        board_numbers = state.get_board().get_numbers()
         # Available actions
-        totalActions = ()
+        total_actions = ()
         # For each position
         for row in range(self.board.get_dim()):
             for col in range(self.board.get_dim()):
@@ -233,15 +229,15 @@ class Numbrix(Problem):
                     for action in actions:
                         if(
                             # Not duplicate action
-                            (action not in totalActions) and 
+                            (action not in total_actions) and 
                             # Number not being used
-                            (action[2] not in boardNumbers) and 
+                            (action[2] not in board_numbers) and 
                             # Number is neighbour
                             (self.board.is_valid_neighbour(action[0], action[1], action[2]))
                         ):
-                            totalActions += (action,)
+                            total_actions += (action,)
                 
-        return totalActions
+        return total_actions
 
 
     def result(self, state: NumbrixState, action):
