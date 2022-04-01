@@ -21,11 +21,6 @@ class NumbrixState:
 
     def __lt__(self, other):
         return self.id < other.id
-        
-    # TODO: outros metodos da classe
-
-    def get_board(self):
-        return self.board
 
 
 class Board:
@@ -147,23 +142,15 @@ class Board:
 
         """ Devolve uma lista de acoes possiveis de realizar na resptiva posicao. """
 
-        actions = ()
-        available_positions = board.get_available_positions(row, col)
-        
-        # Para cada posicao nao preenchida
-        for position in available_positions:
-            neighbours = board.get_neighbours(position[0], position[1])
-            # Para cada numero em falta no tabuleiro
-            for number in board.get_missing_numbers():
-                # Se esse numero nao esta nos vizinhos da posicao
-                if number not in neighbours:
-                    # É uma action possivel
-                    actions += ((position[0],position[1],number),)
+        actions = []
+        for number in self.get_missing_numbers():
+            if self.is_valid_neighbour(row, col, number):
+                actions.append((row,col,number))
 
         return actions
 
     
-    def add_number(self, number: int, row: int, col: int) -> None:
+    def add_number(self, row: int, col: int, number: int) -> None:
 
         """ Atualiza o valor na respetiva posicao do tabuleiro ."""
 
@@ -197,16 +184,12 @@ class Board:
         return Board(board, dim)
 
 
-
-    # TODO:outros metodos da classe
-
-
 class Numbrix(Problem):
 
     def __init__(self, board: Board):
         """ O construtor especifica o estado inicial. """
-        self.board = board
-        pass
+            
+        self.initial = NumbrixState(board)
 
 
     def actions(self, state: NumbrixState):
@@ -214,28 +197,17 @@ class Numbrix(Problem):
         """ Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento. """
 
-        # Numbers already used
-        board_numbers = state.get_board().get_numbers()
         # Available actions
         total_actions = ()
         # For each position
-        for row in range(self.board.get_dim()):
-            for col in range(self.board.get_dim()):
+        for row in range(state.board.get_dim()):
+            for col in range(state.board.get_dim()):
                 # If position is empty
-                if self.board.get_number(row, col) == 0:
+                if state.board.get_number(row, col) == 0:
                     # Get all available actions
-                    actions = self.board.get_actions(row, col)
-                    # Only allow actions that follow the game rules
+                    actions = state.board.get_actions(row, col)
                     for action in actions:
-                        if(
-                            # Not duplicate action
-                            (action not in total_actions) and 
-                            # Number not being used
-                            (action[2] not in board_numbers) and 
-                            # Number is neighbour
-                            (self.board.is_valid_neighbour(action[0], action[1], action[2]))
-                        ):
-                            total_actions += (action,)
+                        total_actions += (action,)
                 
         return total_actions
 
@@ -247,7 +219,7 @@ class Numbrix(Problem):
         das presentes na lista obtida pela execução de 
         self.actions(state). """
 
-        state.get_board().add_number(action[0],action[1],action[2])
+        state.board.add_number(action[0],action[1],action[2])
 
 
     def goal_test(self, state: NumbrixState):
@@ -272,24 +244,21 @@ class Numbrix(Problem):
 
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
-        # estado atual -> node.state
-        # TODO
-        pass
+        return 0
     
-    # TODO: outros metodos da classe
 
 if __name__ == "__main__":
-    # TODO:
-    # Ler o ficheiro de input de sys.argv[1],
-    # Usar uma técnica de procura para resolver a instância,
-    # Retirar a solução a partir do nó resultante,
-    # Imprimir para o standard output no formato indicado.
+
+    # Lê tabuleiro do ficheiro
     board = Board.parse_instance(sys.argv[1])
+
+    # Cria uma instancia de Numbrix
     problem = Numbrix(board)
-    initial_state = NumbrixState(board)
 
     board.print_board()
-    print(problem.actions(initial_state))
+    
+    # Obtem o nó solução usando A*
+    goal_node = astar_search(problem)
 
-    print("Is goal?", problem.goal_test(initial_state))
-    n = board.get_dim()
+    print("Is goal?", problem.goal_test(goal_node.state))
+    print("Solution:\n", goal_node.state.board.to_string(), sep="") 
