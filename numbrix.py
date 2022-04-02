@@ -7,8 +7,10 @@
 # 95562 Diogo Santos
 
 import sys
-from search import Problem, Node, astar_search, breadth_first_tree_search, depth_first_graph_search, depth_first_tree_search, greedy_search, recursive_best_first_search
+from search import Problem, Node, astar_search, breadth_first_tree_search, depth_first_graph_search, \
+    depth_first_tree_search, greedy_search, recursive_best_first_search
 from copy import deepcopy
+
 
 class NumbrixState:
     state_id = 0
@@ -28,8 +30,6 @@ class Board:
     def __init__(self, board: list, dim: int) -> None:
         self.board = board
         self.dim = dim
-        self.missing_numbers = [number for number in range(1, self.dim**2+1) if number not in self.get_numbers()]
-        self.number_empty = len(self.missing_numbers)
         self.empty_pos = []
         self.filled_pos = []
         for row in range(dim):
@@ -38,6 +38,9 @@ class Board:
                     self.empty_pos.append((row, col))
                 else:
                     self.filled_pos.append((row, col))
+        self.filled_numbers = [self.get_number(row, col) for (row, col) in self.get_filled_positions()]
+        self.missing_numbers = [number for number in range(1, self.dim ** 2 + 1) if number not in self.filled_numbers]
+        self.number_empty = len(self.missing_numbers)
 
     def get_filled_positions(self) -> list:
         return self.filled_pos
@@ -59,11 +62,6 @@ class Board:
 
         return self.board[row][col]
 
-    def get_numbers(self):
-        """ Devolve uma lista com todos os valores do tabuleiro. """
-
-        return [number for row in self.board for number in row]
-
     def get_missing_numbers(self):
         """ Devolve uma lista com todos os valores que faltam no tabuleiro. """
 
@@ -75,9 +73,9 @@ class Board:
         res = []
 
         if number > 1:
-            res.append(number-1)
-        if number < self.dim**2:
-            res.append(number+1)
+            res.append(number - 1)
+        if number < self.dim ** 2:
+            res.append(number + 1)
 
         return res
 
@@ -86,7 +84,7 @@ class Board:
         respectivamente. """
 
         numbers = ()
-        for x in (row-1, row+1):
+        for x in (row - 1, row + 1):
             if x < 0 or x >= self.dim:
                 numbers += (None,)
             else:
@@ -98,7 +96,7 @@ class Board:
         respectivamente. """
 
         numbers = ()
-        for y in (col-1, col+1):
+        for y in (col - 1, col + 1):
             if y < 0 or y >= self.dim:
                 numbers += (None,)
             else:
@@ -109,18 +107,18 @@ class Board:
         """ Devolve os valores vizinhos da respetiva posição. """
 
         neighbours = self.adjacent_vertical_numbers(row, col) + self.adjacent_horizontal_numbers(row, col)
-        return tuple(filter(lambda n: n != None, neighbours))
+        return tuple(filter(lambda n: n is not None, neighbours))
 
     def get_available_positions(self, row: int, col: int):
         """ Devolve as posicoes que estao por preencher em redor
         da respetiva posicao. """
 
         available_positions = ()
-        for y in (col-1, col+1):
-            if y >= 0 and y < self.dim and self.get_number(row, y) == 0:
+        for y in (col - 1, col + 1):
+            if 0 <= y < self.dim and self.get_number(row, y) == 0:
                 available_positions += ((row, y),)
-        for x in (row-1, row+1):
-            if x >= 0 and x < self.dim and self.get_number(x, col) == 0:
+        for x in (row - 1, row + 1):
+            if 0 <= x < self.dim and self.get_number(x, col) == 0:
                 available_positions += ((x, col),)
 
         return available_positions
@@ -156,11 +154,11 @@ class Board:
             lines = f.readlines()
             dim = int(lines[0])
             lines = lines[1:]
-            assert(len(lines) == dim)
+            assert (len(lines) == dim)
             board = []
             for line in lines:
                 line = line.strip().split("\t")
-                assert(len(line) == dim)
+                assert (len(line) == dim)
                 board.append([int(x) for x in line])
         return Board(board, dim)
 
@@ -171,7 +169,6 @@ class Numbrix(Problem):
         """ O construtor especifica o estado inicial. """
         self.initial = NumbrixState(board)
 
-
     def actions(self, state: NumbrixState):
         """ Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento. """
@@ -180,11 +177,10 @@ class Numbrix(Problem):
         max_seq = [x for x in board.get_number_seq(number) if x not in board.get_missing_numbers()]
         len_max_seq = len(max_seq)
         total_actions = []
-        for (row, col) in board.get_empty_positions(): # board.get_best_positions(len_max_seq) devia funcionar tbm
+        for (row, col) in board.get_empty_positions():  # board.get_best_positions(len_max_seq) devia funcionar tbm
             if len([x for x in board.get_neighbours(row, col) if x in max_seq]) == len_max_seq:
                 total_actions.append((row, col, number))
         return tuple(total_actions)
-
 
     def result(self, state: NumbrixState, action):
         """ Retorna o estado resultante de executar a 'action' sobre
@@ -195,12 +191,11 @@ class Numbrix(Problem):
         new_state.board.add_number(action[0], action[1], action[2])
         return new_state
 
-
     def goal_test(self, state: NumbrixState):
         """ Retorna True se e só se o estado passado como argumento é
         um estado objetivo. Deve verificar se todas as posições do tabuleiro 
         estão preenchidas com uma sequência de números adjacentes. """
-        
+
         board = state.board
         dim = board.get_dim()
 
@@ -220,9 +215,10 @@ class Numbrix(Problem):
 
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
-        #return 0
-        #return len(node.state.board.get_missing_numbers())
+        # return 0
+        # return len(node.state.board.get_missing_numbers())
         return node.state.board.get_number_of_empty_spaces()
+
 
 def main():
     # Lê tabuleiro do ficheiro
@@ -232,10 +228,12 @@ def main():
     problem = Numbrix(board)
 
     # Obtem o nó solução usando A*
-    #goal_node = astar_search(problem) # 4 Memory Limit, 3 Time Limit
-    goal_node = recursive_best_first_search(problem) # 8 Time Limit
+    goal_node = astar_search(problem, display=True)  # 4 Memory Limit, 3 Time Limit
+    # goal_node = recursive_best_first_search(problem)  # 8 Time Limit
 
+    # Mostra tabuleiro final
     goal_node.state.board.print_board()
+
 
 if __name__ == "__main__":
     main()
