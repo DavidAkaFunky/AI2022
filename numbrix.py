@@ -196,22 +196,7 @@ class Numbrix(Problem):
         um estado objetivo. Deve verificar se todas as posições do tabuleiro 
         estão preenchidas com uma sequência de números adjacentes. """
 
-        board = state.board
-        dim = board.get_dim()
-
-        # Para cada posicao
-        for row in range(dim):
-            for col in range(dim):
-                # Obtem os vizinhos e os valores adjacentes
-                neighbours = board.get_neighbours(row, col)
-                number_seq = board.get_number_seq(board.get_number(row, col))
-                # Se um dos valores adjacentes nao for um vizinho da posicao
-                # entao nao forma uma sequencia e falha
-                for number in number_seq:
-                    if number not in neighbours:
-                        return False
-
-        return True
+        return state.board.get_number_of_empty_spaces() == 0
 
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
@@ -228,8 +213,8 @@ def main():
     problem = Numbrix(board)
 
     # Obtem o nó solução usando A*
-    goal_node = astar_search(problem, display=True)  # 4 Memory Limit, 3 Time Limit
-    # goal_node = recursive_best_first_search(problem)  # 8 Time Limit
+    goal_node = astar_search(problem)  # 4 Memory Limit, 3 Time Limit
+    #goal_node = recursive_best_first_search(problem)  # 8 Time Limit
 
     # Mostra tabuleiro final
     goal_node.state.board.print_board()
