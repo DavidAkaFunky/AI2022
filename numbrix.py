@@ -31,19 +31,17 @@ class Board:
         self.board = board
         self.dim = dim
         self.empty_pos = []
-        self.filled_pos = []
+        self.missing_numbers = list(range(1, self.dim ** 2 + 1))
+        self.positions = {}
         for row in range(dim):
             for col in range(dim):
-                if board[row][col] == 0:
+                number = board[row][col]
+                if number == 0:
                     self.empty_pos.append((row, col))
                 else:
-                    self.filled_pos.append((row, col))
-        self.filled_numbers = [self.get_number(row, col) for (row, col) in self.get_filled_positions()]
-        self.missing_numbers = [number for number in range(1, self.dim ** 2 + 1) if number not in self.filled_numbers]
+                    self.positions[number] = (row, col)
+                    self.missing_numbers.remove(number)
         self.number_empty = len(self.missing_numbers)
-
-    def get_filled_positions(self) -> list:
-        return self.filled_pos
 
     def get_empty_positions(self) -> list:
         return self.empty_pos
@@ -66,6 +64,23 @@ class Board:
         """ Devolve uma lista com todos os valores que faltam no tabuleiro. """
 
         return self.missing_numbers
+
+    def get_best_missing_number(self):
+        best = self.missing_numbers[0]
+        min_available = len(self.get_number_seq(best))
+        i = 1
+        while min_available > 0 and i < len(self.missing_numbers):
+            number = self.missing_numbers[i]
+            seq = self.get_number_seq(number)
+            len_available = 0
+            for x in seq:
+                if x in self.missing_numbers:
+                    len_available += 1
+            if len_available < min_available:
+                best = number
+                min_available = len_available
+            i += 1
+        return best
 
     def get_number_seq(self, number: int) -> tuple:
         """ Devolve uma lista com todos os valores imediatamente adjacentes ao numero. """
@@ -103,11 +118,11 @@ class Board:
                 numbers += (self.get_number(row, y),)
         return numbers
 
-    def get_neighbours(self, row: int, col: int) -> tuple:
+    def get_neighbours(self, row: int, col: int):
         """ Devolve os valores vizinhos da respetiva posição. """
 
         neighbours = self.adjacent_vertical_numbers(row, col) + self.adjacent_horizontal_numbers(row, col)
-        return tuple(filter(lambda n: n is not None, neighbours))
+        return filter(lambda n: n is not None, neighbours)
 
     def get_available_positions(self, row: int, col: int):
         """ Devolve as posicoes que estao por preencher em redor
@@ -129,14 +144,15 @@ class Board:
         self.board[row][col] = number
         self.missing_numbers.remove(number)
         self.empty_pos.remove((row, col))
-        self.filled_pos.append((row, col))
+        self.positions[number] = (row, col)
 
-    def get_best_positions(self, len_max_pos: int) -> list:
-        if len_max_pos == 0:
-            return self.empty_pos
+    def get_best_positions(self, max_seq) -> list:
+        if len(max_seq) == 0:
+            return self.get_empty_positions()
         neighbours = set()
-        for (row, col) in self.filled_pos:
-            for n in self.get_available_positions(row, col):
+        for number in max_seq:
+            pos = self.positions[number]
+            for n in self.get_available_positions(pos[0], pos[1]):
                 neighbours.add(n)
         return neighbours
 
@@ -173,11 +189,12 @@ class Numbrix(Problem):
         """ Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento. """
         board = state.board
+        # number = board.get_best_missing_number() # Não é eficiente
         number = board.get_missing_numbers()[0]
         max_seq = [x for x in board.get_number_seq(number) if x not in board.get_missing_numbers()]
         len_max_seq = len(max_seq)
         total_actions = []
-        for (row, col) in board.get_empty_positions():  # board.get_best_positions(len_max_seq) devia funcionar tbm
+        for (row, col) in board.get_best_positions(max_seq):
             if len([x for x in board.get_neighbours(row, col) if x in max_seq]) == len_max_seq:
                 total_actions.append((row, col, number))
         return tuple(total_actions)
@@ -213,8 +230,8 @@ def main():
     problem = Numbrix(board)
 
     # Obtem o nó solução usando A*
-    goal_node = astar_search(problem)  # 4 Memory Limit, 3 Time Limit
-    #goal_node = recursive_best_first_search(problem)  # 8 Time Limit
+    goal_node = astar_search(problem)  # 8 Memory Limit
+    #goal_node = recursive_best_first_search(problem)  # 7 Time Limit
 
     # Mostra tabuleiro final
     goal_node.state.board.print_board()
