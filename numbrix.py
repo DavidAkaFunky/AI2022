@@ -187,17 +187,17 @@ class Board:
             for _number in max_seq[1:]:
                 pos = self.positions[_number]
                 neighbours = neighbours & self.get_available_positions(pos[0], pos[1])
-        return neighbours
-        #positions = []
-        #for neighbour in neighbours:
-        #    flag = True
-        #    for position in self.positions:
-        #        if abs(number-position) < manhattan_distance(self.positions[position], neighbour):
-        #            flag = False
-        #            break
-        #    if flag:
-        #        positions.append(neighbour)
-        #return positions
+        #return neighbours
+        positions = []
+        for neighbour in neighbours:
+            flag = True
+            for position in self.positions:
+                if abs(number-position) < manhattan_distance(self.positions[position], neighbour):
+                    flag = False
+                    break
+            if flag:
+                positions.append(neighbour)
+        return positions
 
     def print_board(self):
         """ Imprime o tabuleiro na consola. """
@@ -213,11 +213,11 @@ class Board:
             lines = f.readlines()
             dim = int(lines[0])
             lines = lines[1:]
-            assert (len(lines) == dim)
+            assert len(lines) == dim
             board = []
             for line in lines:
                 line = line.strip().split("\t")
-                assert (len(line) == dim)
+                assert len(line) == dim
                 board.append([int(x) for x in line])
         return Board(board, dim)
 
@@ -227,16 +227,22 @@ class Numbrix(Problem):
     def __init__(self, board: Board):
         """ O construtor especifica o estado inicial. """
         self.initial = NumbrixState(board)
+        self.n = 0
 
     def actions(self, state: NumbrixState):
         """ Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento. """
         board = state.board
-        #number = board.get_best_missing_number() # Não é eficiente
+        number = board.get_best_missing_number() # Não é eficiente
         #print(board.missing_numbers, number)
-        number = list(board.get_missing_numbers().keys())[0]
+        #number = list(board.get_missing_numbers().keys())[0]
         max_seq = [x for x in board.get_number_seq(number) if x not in board.get_missing_numbers()]
         actions = [(row, col, number) for (row, col) in board.get_best_positions(number, max_seq)]
+        if actions == []:
+            self.n += 1
+        #board.print_board()
+        #print(actions)
+        #print("______________________________")
         return actions
 
     def result(self, state: NumbrixState, action):
@@ -258,7 +264,14 @@ class Numbrix(Problem):
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
         # return 0
-        return node.state.board.get_number_of_empty_spaces()
+
+        #return node.state.board.get_number_of_empty_spaces()
+        
+        total = 0
+        board = node.state.board
+        for space in board.get_empty_positions():
+            total += (4-len(board.get_available_positions(space[0], space[1])))**2
+        return total
 
 
 def main():
@@ -273,7 +286,7 @@ def main():
     #goal_node = greedy_search(problem, problem.h)
     goal_node = astar_search(problem, display=True)  # 8 Memory Limit
     #goal_node = recursive_best_first_search(problem)  # 7 Time Limit
-
+    print(problem.n)
     # Mostra tabuleiro final
     goal_node.state.board.print_board()
 
