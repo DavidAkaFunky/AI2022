@@ -10,7 +10,8 @@ import sys
 from search import Problem, Node, astar_search, breadth_first_tree_search, depth_first_graph_search, \
     depth_first_tree_search, greedy_search, recursive_best_first_search
 from copy import deepcopy
-
+from utils import manhattan_distance
+from time import sleep
 
 class NumbrixState:
     state_id = 0
@@ -31,16 +32,26 @@ class Board:
         self.board = board
         self.dim = dim
         self.empty_pos = []
-        self.missing_numbers = list(range(1, self.dim ** 2 + 1))
+        self.missing_numbers = {x: [False, False] for x in range(1, self.dim ** 2 + 1)}
         self.positions = {}
+        self.missing_numbers[1][0] = True
+        self.missing_numbers[dim**2][1] = True
         for row in range(dim):
             for col in range(dim):
                 number = board[row][col]
                 if number == 0:
                     self.empty_pos.append((row, col))
                 else:
+                    try:
+                        self.missing_numbers[number-1][1] = True
+                    except KeyError:
+                        pass
+                    try:
+                        self.missing_numbers[number+1][0] = True
+                    except KeyError:
+                        pass
                     self.positions[number] = (row, col)
-                    self.missing_numbers.remove(number)
+                    self.missing_numbers.pop(number)
         self.number_empty = len(self.missing_numbers)
 
     def get_empty_positions(self) -> list:
@@ -66,21 +77,34 @@ class Board:
         return self.missing_numbers
 
     def get_best_missing_number(self):
-        best = self.missing_numbers[0]
-        min_available = len(self.get_number_seq(best))
-        i = 1
-        while min_available > 0 and i < len(self.missing_numbers):
-            number = self.missing_numbers[i]
-            seq = self.get_number_seq(number)
-            len_available = 0
-            for x in seq:
-                if x in self.missing_numbers:
-                    len_available += 1
-            if len_available < min_available:
-                best = number
-                min_available = len_available
-            i += 1
-        return best
+        chosen_alternative = False
+        for number in self.missing_numbers:
+            left = self.missing_numbers[number][0]
+            right = self.missing_numbers[number][1]
+            if left and right:
+                return number
+            if not chosen_alternative and (left or right) and number != 1 and number != self.dim**2:
+                chosen_alternative = True
+                alternative = number
+        return alternative
+
+    #def get_best_missing_number(self):
+    #    number = self.missing_numbers[0]
+    #    if len(self.missing_numbers) == 1 or self.missing_numbers[1] != number+1:
+    #        return number
+    #    chosen_alternative = False
+    #    alternative = number
+    #    for i in range(1, len(self.missing_numbers)-1):
+    #        number = self.missing_numbers[i]
+    #        left = number-1 != self.missing_numbers[i-1]
+    #        right = number+1 != self.missing_numbers[i+1]
+    #        if left and right:
+    #            return number
+    #        if not chosen_alternative and (left or right):
+    #            chosen_alternative = True
+    #            alternative = number
+    #    return alternative
+                
 
     def get_number_seq(self, number: int) -> tuple:
         """ Devolve uma lista com todos os valores imediatamente adjacentes ao numero. """
@@ -128,13 +152,13 @@ class Board:
         """ Devolve as posicoes que estao por preencher em redor
         da respetiva posicao. """
 
-        available_positions = ()
+        available_positions = set()
         for y in (col - 1, col + 1):
             if 0 <= y < self.dim and self.get_number(row, y) == 0:
-                available_positions += ((row, y),)
+                available_positions.add((row, y))
         for x in (row - 1, row + 1):
             if 0 <= x < self.dim and self.get_number(x, col) == 0:
-                available_positions += ((x, col),)
+                available_positions.add((x, col))
 
         return available_positions
 
@@ -142,19 +166,38 @@ class Board:
         """ Atualiza o valor na respetiva posicao do tabuleiro ."""
         self.number_empty -= 1
         self.board[row][col] = number
-        self.missing_numbers.remove(number)
+        self.missing_numbers.pop(number)
         self.empty_pos.remove((row, col))
         self.positions[number] = (row, col)
+        try:
+            self.missing_numbers[number-1][1] = True
+        except KeyError:
+            pass
+        try:
+            self.missing_numbers[number+1][0] = True
+        except KeyError:
+            pass
 
-    def get_best_positions(self, max_seq) -> list:
-        if len(max_seq) == 0:
-            return self.get_empty_positions()
-        neighbours = set()
-        for number in max_seq:
-            pos = self.positions[number]
-            for n in self.get_available_positions(pos[0], pos[1]):
-                neighbours.add(n)
+    def get_best_positions(self, number, max_seq) -> list:
+        if max_seq == []:
+            neighbours = self.empty_pos
+        else:
+            pos = self.positions[max_seq[0]]
+            neighbours = self.get_available_positions(pos[0], pos[1])
+            for _number in max_seq[1:]:
+                pos = self.positions[_number]
+                neighbours = neighbours & self.get_available_positions(pos[0], pos[1])
         return neighbours
+        #positions = []
+        #for neighbour in neighbours:
+        #    flag = True
+        #    for position in self.positions:
+        #        if abs(number-position) < manhattan_distance(self.positions[position], neighbour):
+        #            flag = False
+        #            break
+        #    if flag:
+        #        positions.append(neighbour)
+        #return positions
 
     def print_board(self):
         """ Imprime o tabuleiro na consola. """
@@ -189,15 +232,12 @@ class Numbrix(Problem):
         """ Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento. """
         board = state.board
-        # number = board.get_best_missing_number() # Não é eficiente
-        number = board.get_missing_numbers()[0]
+        #number = board.get_best_missing_number() # Não é eficiente
+        #print(board.missing_numbers, number)
+        number = list(board.get_missing_numbers().keys())[0]
         max_seq = [x for x in board.get_number_seq(number) if x not in board.get_missing_numbers()]
-        len_max_seq = len(max_seq)
-        total_actions = []
-        for (row, col) in board.get_best_positions(max_seq):
-            if len([x for x in board.get_neighbours(row, col) if x in max_seq]) == len_max_seq:
-                total_actions.append((row, col, number))
-        return tuple(total_actions)
+        actions = [(row, col, number) for (row, col) in board.get_best_positions(number, max_seq)]
+        return actions
 
     def result(self, state: NumbrixState, action):
         """ Retorna o estado resultante de executar a 'action' sobre
@@ -218,7 +258,6 @@ class Numbrix(Problem):
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
         # return 0
-        # return len(node.state.board.get_missing_numbers())
         return node.state.board.get_number_of_empty_spaces()
 
 
@@ -230,7 +269,9 @@ def main():
     problem = Numbrix(board)
 
     # Obtem o nó solução usando A*
-    goal_node = astar_search(problem)  # 8 Memory Limit
+    #goal_node = depth_first_tree_search(problem)
+    #goal_node = greedy_search(problem, problem.h)
+    goal_node = astar_search(problem, display=True)  # 8 Memory Limit
     #goal_node = recursive_best_first_search(problem)  # 7 Time Limit
 
     # Mostra tabuleiro final
