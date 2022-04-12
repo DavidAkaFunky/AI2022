@@ -76,35 +76,33 @@ class Board:
 
         return self.missing_numbers
 
+    #def get_best_missing_number(self):
+    #Hipótese menos eficiente
+    #    smallest_gap = self.dim**2
+    #    missing_numbers = [0] + sorted(list(self.positions.keys())) + [self.dim**2+1]
+    #    for i in range(len(missing_numbers)-1):
+    #        number = missing_numbers[i]
+    #        gap = missing_numbers[i+1] - number
+    #        if gap == 2:
+    #            return number + 1
+    #        if 2 < gap < smallest_gap:
+    #            smallest_gap = gap
+    #            best = number
+    #    return best + 1
+
     def get_best_missing_number(self):
-        chosen_alternative = False
+        alt_left = alt_right = 0
         for number in self.missing_numbers:
             left = self.missing_numbers[number][0]
             right = self.missing_numbers[number][1]
             if left and right:
                 return number
-            if not chosen_alternative and (left or right) and number != 1 and number != self.dim**2:
-                chosen_alternative = True
-                alternative = number
-        return alternative
-
-    #def get_best_missing_number(self):
-    #    number = self.missing_numbers[0]
-    #    if len(self.missing_numbers) == 1 or self.missing_numbers[1] != number+1:
-    #        return number
-    #    chosen_alternative = False
-    #    alternative = number
-    #    for i in range(1, len(self.missing_numbers)-1):
-    #        number = self.missing_numbers[i]
-    #        left = number-1 != self.missing_numbers[i-1]
-    #        right = number+1 != self.missing_numbers[i+1]
-    #        if left and right:
-    #            return number
-    #        if not chosen_alternative and (left or right):
-    #            chosen_alternative = True
-    #            alternative = number
-    #    return alternative
-                
+            if number != 1 and number != self.dim**2:
+                if alt_left == 0 and left:
+                    alt_left = number
+                if alt_right == 0 and right:
+                    alt_right = number
+        return alt_left if alt_left != 0 else alt_right
 
     def get_number_seq(self, number: int) -> tuple:
         """ Devolve uma lista com todos os valores imediatamente adjacentes ao numero. """
@@ -187,7 +185,6 @@ class Board:
             for _number in max_seq[1:]:
                 pos = self.positions[_number]
                 neighbours = neighbours & self.get_available_positions(pos[0], pos[1])
-        #return neighbours
         positions = []
         for neighbour in neighbours:
             flag = True
@@ -240,9 +237,6 @@ class Numbrix(Problem):
         actions = [(row, col, number) for (row, col) in board.get_best_positions(number, max_seq)]
         if actions == []:
             self.n += 1
-        #board.print_board()
-        #print(actions)
-        #print("______________________________")
         return actions
 
     def result(self, state: NumbrixState, action):
@@ -264,13 +258,11 @@ class Numbrix(Problem):
     def h(self, node: Node):
         """ Função heuristica utilizada para a procura A*. """
         # return 0
-
-        #return node.state.board.get_number_of_empty_spaces()
         
-        total = 0
         board = node.state.board
+        total = 0
         for space in board.get_empty_positions():
-            total += (4-len(board.get_available_positions(space[0], space[1])))**2
+            total += (4-len(board.get_available_positions(space[0], space[1])))**4
         return total
 
 
@@ -283,10 +275,9 @@ def main():
 
     # Obtem o nó solução usando A*
     #goal_node = depth_first_tree_search(problem)
-    #goal_node = greedy_search(problem, problem.h)
-    goal_node = astar_search(problem, display=True)  # 8 Memory Limit
+    goal_node = greedy_search(problem, problem.h) # 5 Memory Limit
+    #goal_node = astar_search(problem, display = True)  # 7 Memory Limit
     #goal_node = recursive_best_first_search(problem)  # 7 Time Limit
-    print(problem.n)
     # Mostra tabuleiro final
     goal_node.state.board.print_board()
 
