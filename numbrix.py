@@ -32,10 +32,10 @@ class Board:
         self.board = board
         self.dim = dim
         self.empty_pos = []
-        self.missing_numbers = {x: [False, False] for x in range(1, self.dim ** 2 + 1)}
+        self.missing_numbers_neighbours = {x: [False, False] for x in range(1, self.dim ** 2 + 1)}
         self.positions = {}
-        self.missing_numbers[1][0] = True
-        self.missing_numbers[dim**2][1] = True
+        self.missing_numbers_neighbours[1][0] = True
+        self.missing_numbers_neighbours[dim**2][1] = True
         for row in range(dim):
             for col in range(dim):
                 number = board[row][col]
@@ -43,15 +43,29 @@ class Board:
                     self.empty_pos.append((row, col))
                 else:
                     try:
-                        self.missing_numbers[number-1][1] = True
+                        self.missing_numbers_neighbours[number-1][1] = True
                     except KeyError:
                         pass
                     try:
-                        self.missing_numbers[number+1][0] = True
+                        self.missing_numbers_neighbours[number+1][0] = True
                     except KeyError:
                         pass
                     self.positions[number] = (row, col)
-                    self.missing_numbers.pop(number)
+                    self.missing_numbers_neighbours.pop(number)
+        self.missing_numbers = []
+        while self.missing_numbers_neighbours != {}:
+            best = self.get_best_missing_numbers()
+            self.missing_numbers += best
+            for number in best:
+                self.missing_numbers_neighbours.pop(number)
+                try:
+                    self.missing_numbers_neighbours[number-1][1] = True
+                except KeyError:
+                    pass
+                try:
+                    self.missing_numbers_neighbours[number+1][0] = True
+                except KeyError:
+                    pass
         self.number_empty = len(self.missing_numbers)
 
     def get_empty_positions(self) -> list:
@@ -76,33 +90,23 @@ class Board:
 
         return self.missing_numbers
 
-    #def get_best_missing_number(self):
-    #Hipótese menos eficiente
-    #    smallest_gap = self.dim**2
-    #    missing_numbers = [0] + sorted(list(self.positions.keys())) + [self.dim**2+1]
-    #    for i in range(len(missing_numbers)-1):
-    #        number = missing_numbers[i]
-    #        gap = missing_numbers[i+1] - number
-    #        if gap == 2:
-    #            return number + 1
-    #        if 2 < gap < smallest_gap:
-    #            smallest_gap = gap
-    #            best = number
-    #    return best + 1
-
-    def get_best_missing_number(self):
+    def get_best_missing_numbers(self):
+        """ Do you go left where nothing is right, or do you go right where nothing is left? #inspirational"""
+        best_numbers = []
         alt_left = alt_right = 0
-        for number in self.missing_numbers:
-            left = self.missing_numbers[number][0]
-            right = self.missing_numbers[number][1]
+        for number in self.missing_numbers_neighbours:
+            left = self.missing_numbers_neighbours[number][0]
+            right = self.missing_numbers_neighbours[number][1]
             if left and right:
-                return number
+                best_numbers.append(number)
             if number != 1 and number != self.dim**2:
                 if alt_left == 0 and left:
                     alt_left = number
                 if alt_right == 0 and right:
                     alt_right = number
-        return alt_left if alt_left != 0 else alt_right
+        if best_numbers == []:
+            best_numbers.append(alt_left) if alt_left != 0 else best_numbers.append(alt_right)
+        return best_numbers
 
     def get_number_seq(self, number: int) -> tuple:
         """ Devolve uma lista com todos os valores imediatamente adjacentes ao numero. """
@@ -162,29 +166,16 @@ class Board:
 
     def add_number(self, row: int, col: int, number: int) -> None:
         """ Atualiza o valor na respetiva posicao do tabuleiro ."""
-        self.number_empty -= 1
         self.board[row][col] = number
-        self.missing_numbers.pop(number)
         self.empty_pos.remove((row, col))
         self.positions[number] = (row, col)
-        try:
-            self.missing_numbers[number-1][1] = True
-        except KeyError:
-            pass
-        try:
-            self.missing_numbers[number+1][0] = True
-        except KeyError:
-            pass
 
     def get_best_positions(self, number, max_seq) -> list:
-        if max_seq == []:
-            neighbours = self.empty_pos
-        else:
-            pos = self.positions[max_seq[0]]
-            neighbours = self.get_available_positions(pos[0], pos[1])
-            for _number in max_seq[1:]:
-                pos = self.positions[_number]
-                neighbours = neighbours & self.get_available_positions(pos[0], pos[1])
+        pos = self.positions[max_seq[0]]
+        neighbours = self.get_available_positions(pos[0], pos[1])
+        for _number in max_seq[1:]:
+            pos = self.positions[_number]
+            neighbours = neighbours & self.get_available_positions(pos[0], pos[1])
         positions = []
         for neighbour in neighbours:
             flag = True
@@ -230,13 +221,14 @@ class Numbrix(Problem):
         """ Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento. """
         board = state.board
-        number = board.get_best_missing_number() # Não é eficiente
-        #print(board.missing_numbers, number)
-        #number = list(board.get_missing_numbers().keys())[0]
-        max_seq = [x for x in board.get_number_seq(number) if x not in board.get_missing_numbers()]
+        missing_numbers = board.get_missing_numbers()
+        number = missing_numbers[0]
+        max_seq = [x for x in board.get_number_seq(number) if x not in missing_numbers]
         actions = [(row, col, number) for (row, col) in board.get_best_positions(number, max_seq)]
         if actions == []:
             self.n += 1
+        missing_numbers.remove(number)
+        board.number_empty -= 1
         return actions
 
     def result(self, state: NumbrixState, action):
