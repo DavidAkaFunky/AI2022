@@ -232,6 +232,12 @@ class Numbrix(Problem):
 
         board = state.board
         missing_numbers = board.get_missing_numbers()
+        positions = board.get_positions()
+        for number in positions:
+            if len(board.get_available_positions(*positions[number])) == 0:
+                for number_seq in board.get_number_seq(number):
+                    if number_seq in missing_numbers:
+                        return []
         number = missing_numbers[0]
         missing_numbers.remove(number)
 
@@ -261,7 +267,7 @@ class Numbrix(Problem):
         board = node.state.board
         total = 0
         for space in board.get_empty_positions():
-            total += (4-len(board.get_available_positions(*space)))**4
+            total += (4-len(board.get_available_positions(*space)))**2
         return total
 
 
@@ -274,9 +280,9 @@ def main():
 
     # Obtem o nó solução usando A*
     #goal_node = depth_first_tree_search(problem)
-    goal_node = greedy_search(problem, problem.h) # 5 Memory Limit
-    #goal_node = astar_search(problem, display = True)  # 7 Memory Limit
-    #goal_node = recursive_best_first_search(problem)  # 7 Time Limit
+    #goal_node = greedy_search(problem, problem.h) # 2 Memory Limit, 2 Time Limit
+    goal_node = astar_search(problem)  # 2 Memory Limit, 2 Time Limit
+    #goal_node = recursive_best_first_search(problem)
     # Mostra tabuleiro final
     goal_node.state.board.print_board()
 
