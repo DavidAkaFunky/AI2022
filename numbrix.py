@@ -268,8 +268,8 @@ def main():
     problem = Numbrix(board)
 
     # Obtem o nó solução usando A*
-    #goal_node = depth_first_tree_search(problem)
-    goal_node = greedy_search(problem, problem.h) # 2 Memory Limit, 2 Time Limit
+    goal_node = depth_first_tree_search(problem)
+    #goal_node = greedy_search(problem, problem.h) # 2 Memory Limit, 2 Time Limit
     #goal_node = astar_search(problem)  # 2 Memory Limit, 2 Time Limit
     #goal_node = recursive_best_first_search(problem)
     # Mostra tabuleiro final

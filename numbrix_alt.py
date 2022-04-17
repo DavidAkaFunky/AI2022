@@ -172,7 +172,7 @@ class Board:
         self.positions[number] = (row, col)
         self.empty_pos.remove((row, col))
         
-    def get_best_positions(self, number, max_seq) -> list:
+    def get_best_positions(self, number, max_seq, missing_numbers) -> list:
 
         # Create a set which is an intersection of all available positions for each number in max_seq
         # This positions are the only ones that can be used to place the number
@@ -183,14 +183,21 @@ class Board:
         # Verify that for each available position, the distance to every number is valid
         positions = []
         for neighbour in neighbours:
-            valid_neighbor = True
+            valid_neighbour = True
             for position in self.positions:
                 # abs       -> distance in terms of integers            (e.g. 7-5 = 2)
                 # manhattan -> distance in terms of moves in the board  (e.g. (3,1)-(2,2)=(1,1)=2)
                 if abs(number-position) < manhattan_distance(self.positions[position], neighbour):
-                    valid_neighbor = False
+                    valid_neighbour = False
                     break
-            if valid_neighbor:
+            for neighbour2 in self.get_neighbours(*neighbour):
+                if neighbour2 != 0:
+                    neighbour_pos = self.positions[neighbour2]
+                    if len(self.get_empty_neighbours_positions(*neighbour_pos)) == 1:
+                        for number_seq in self.get_number_seq(neighbour2) + [number]:
+                            if number_seq in missing_numbers:
+                                valid_neighbour = False
+            if valid_neighbour:
                 positions.append(neighbour)
 
         return positions
@@ -224,16 +231,6 @@ class Numbrix(Problem):
         """ O construtor especifica o estado inicial. """
         self.initial = NumbrixState(board)
 
-    def check_valid(self, board, number, missing_numbers, row, col):
-        for neighbour in board.get_neighbours(row, col):
-            if neighbour != 0:
-                neighbour_pos = board.positions[neighbour]
-                if len(board.get_empty_neighbours_positions(*neighbour_pos)) == 1:
-                    for number_seq in board.get_number_seq(neighbour) + [number]:
-                        if number_seq in missing_numbers:
-                            return False
-        return True
-
     def actions(self, state: NumbrixState):
         """ Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento. """
@@ -241,15 +238,14 @@ class Numbrix(Problem):
         board = state.board
         missing_numbers = board.get_missing_numbers()
         number = missing_numbers.pop(0)
-
+        
         # List of possible sequence for number based on already placed numbers
         # [number-1,number+1] or [number-1] or [number+1]
         max_seq = [x for x in board.get_number_seq(number) if x not in missing_numbers]
 
         # List of actions based of available positions around each number of max_seq
         # Notice that number can only be place adjacent to one of the numbers in max_seq 
-        return [(row, col, number) for (row, col) in board.get_best_positions(number, max_seq) 
-                if self.check_valid(board, number, missing_numbers, row, col)]
+        return [(row, col, number) for (row, col) in board.get_best_positions(number, max_seq, missing_numbers)]
 
     def result(self, state: NumbrixState, action):
         """ Retorna o estado resultante de executar a 'action' sobre
