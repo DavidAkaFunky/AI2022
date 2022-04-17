@@ -6,8 +6,9 @@
 # 95550 David Belchior
 # 95562 Diogo Santos
 
-from re import S
 import sys
+
+from numpy import diff
 from search import Problem, Node, astar_search, breadth_first_tree_search, depth_first_graph_search, \
     depth_first_tree_search, greedy_search, recursive_best_first_search
 from copy import deepcopy
@@ -40,20 +41,14 @@ class Board:
         # Dictionary with the positions of the numbers
         # {number: (row, col)}
         self.positions = {}
-
+        
         # List of empty positions
         # [(row, col)]
         self.empty_pos = []
 
-        # List of missing numbers
+        # List of used numbers
         # [number]
-        self.missing_numbers = []
-
-        # Dictionary with the status of each neighbor of missing number (True -> present, False -> missing)
-        # {number: (isLeftNeighhorPresent, isRightNeighborPresent)}
-        missing_numbers_neighbours = {x: [False, False] for x in range(1, self.dim ** 2 + 1)}
-        missing_numbers_neighbours[1][0] = True
-        missing_numbers_neighbours[dim**2][1] = True
+        used_numbers = []
 
         # Objective:
         # Find all missing numbers / Find all numbers position
@@ -66,25 +61,12 @@ class Board:
                     self.empty_pos.append((row, col))
                 # If position is not empty
                 else:
-                    self.update_missing_numbers_neighbours(missing_numbers_neighbours, number)
+                    used_numbers.append(number)
                     self.positions[number] = (row, col)
 
-        # Objective:
-        # Fill missing_numbers sorted by best number to place in the board first
-        # This is done by simulating the placement of each number in the board
-        while missing_numbers_neighbours != {}:
-            best = self.get_best_missing_numbers(missing_numbers_neighbours)
-            self.missing_numbers += best
-            for number in best:
-                self.update_missing_numbers_neighbours(missing_numbers_neighbours, number) 
-
-    def update_missing_numbers_neighbours(self, missing_numbers_neighbours, number):
-        missing_numbers_neighbours.pop(number)
-        for (value, index) in ((number-1, 1), (number+1, 0)):
-            try:
-                missing_numbers_neighbours[value][index] = True
-            except KeyError:
-                pass
+        # List of missing numbers
+        # [number]
+        self.missing_numbers = self.get_number_choice_order(used_numbers)
 
     def get_board(self) -> list:
         return self.board
@@ -107,33 +89,28 @@ class Board:
     def get_number(self, row: int, col: int) -> int:
         return self.board[row][col]
 
-    def get_best_missing_numbers(self, missing_numbers_neighbours):
+    def get_number_choice_order(self, used_numbers):
         """ 
         Finds best missing numbers to place in the board.
         Only used to fill missing_number list in the constructor. 
         """
-        best_numbers = []
-        alt_left = alt_right = 0
-        # For each missing number
-        for number in missing_numbers_neighbours:
-            left = missing_numbers_neighbours[number][0]
-            right = missing_numbers_neighbours[number][1]
-            # If left and right neighbors are present add to best numbers
-            if left and right:
-                best_numbers.append(number)
-            # Keep track of alternative numbers in case no number has both neighbors present
-            if number != 1 and number != self.dim**2:
-                if alt_left == 0 and left:
-                    alt_left = number
-                if alt_right == 0 and right:
-                    alt_right = number
-        # If there is no number with both neighbours present
-        if best_numbers == []:
-            # Add smallest number that has at least one neighbor present
-            # Give priority to number with left neighbor
-            best_numbers.append(alt_left) if alt_left != 0 else best_numbers.append(alt_right)
-
-        return best_numbers
+        used_numbers = sorted(used_numbers + [0, self.dim**2 + 1])
+        order = []
+        worse_used_numbers_dict = {}
+        for i in range(len(used_numbers) - 1):
+            number = used_numbers[i]
+            difference = used_numbers[i+1] - number
+            if difference == 2:
+                order += list(range(number + 1, number + difference))
+            if difference > 2:
+                worse_used_numbers_dict[number] = difference
+        final = []
+        for number in worse_used_numbers_dict:
+            if number == 0:
+                final = list(range(number + worse_used_numbers_dict[number] - 1, number, -1))
+            else:
+                order += list(range(number + 1, number + worse_used_numbers_dict[number]))
+        return order + final
 
     def get_number_seq(self, number: int) -> list:
         """ Devolve uma lista com todos os valores imediatamente adjacentes ao numero. """
@@ -145,7 +122,37 @@ class Board:
             res.append(number + 1)
         return res
 
-    def get_empty_neighbours(self, row: int, col: int) -> set:
+    def adjacent_vertical_numbers(self, row: int, col: int) -> (int, int):
+        """ Devolve os valores imediatamente abaixo e acima, 
+        respectivamente. """
+
+        numbers = ()
+        for x in (row - 1, row + 1):
+            if x < 0 or x >= self.dim:
+                numbers += (None,)
+            else:
+                numbers += (self.get_number(x, col),)
+        return numbers
+
+    def adjacent_horizontal_numbers(self, row: int, col: int) -> (int, int):
+        """ Devolve os valores imediatamente à esquerda e à direita, 
+        respectivamente. """
+
+        numbers = ()
+        for y in (col - 1, col + 1):
+            if y < 0 or y >= self.dim:
+                numbers += (None,)
+            else:
+                numbers += (self.get_number(row, y),)
+        return numbers
+
+    def get_neighbours(self, row: int, col: int):
+        """ Devolve os valores vizinhos da respetiva posição. """
+
+        neighbours = self.adjacent_vertical_numbers(row, col) + self.adjacent_horizontal_numbers(row, col)
+        return filter(lambda n: n is not None, neighbours)
+
+    def get_empty_neighbours_positions(self, row: int, col: int) -> set:
         """ Devolve as posicoes que estao por preencher em redor
         da respetiva posicao. """
 
@@ -169,9 +176,9 @@ class Board:
 
         # Create a set which is an intersection of all available positions for each number in max_seq
         # This positions are the only ones that can be used to place the number
-        neighbours = self.get_empty_neighbours(*self.positions[max_seq[0]])
+        neighbours = self.get_empty_neighbours_positions(*self.positions[max_seq[0]])
         if(len(max_seq) == 2):
-            neighbours = neighbours & self.get_empty_neighbours(*self.positions[max_seq[1]])
+            neighbours = neighbours & self.get_empty_neighbours_positions(*self.positions[max_seq[1]])
             
         # Verify that for each available position, the distance to every number is valid
         positions = []
@@ -217,18 +224,22 @@ class Numbrix(Problem):
         """ O construtor especifica o estado inicial. """
         self.initial = NumbrixState(board)
 
+    def check_valid(self, board, number, missing_numbers, row, col):
+        for neighbour in board.get_neighbours(row, col):
+            if neighbour != 0:
+                neighbour_pos = board.positions[neighbour]
+                if len(board.get_empty_neighbours_positions(*neighbour_pos)) == 1:
+                    for number_seq in board.get_number_seq(neighbour) + [number]:
+                        if number_seq in missing_numbers:
+                            return False
+        return True
+
     def actions(self, state: NumbrixState):
         """ Retorna uma lista de ações que podem ser executadas a
         partir do estado passado como argumento. """
 
         board = state.board
         missing_numbers = board.get_missing_numbers()
-        positions = board.get_positions()
-        for number in positions:
-            if len(board.get_empty_neighbours(*positions[number])) == 0:
-                for number_seq in board.get_number_seq(number):
-                    if number_seq in missing_numbers:
-                        return []
         number = missing_numbers.pop(0)
 
         # List of possible sequence for number based on already placed numbers
@@ -237,9 +248,8 @@ class Numbrix(Problem):
 
         # List of actions based of available positions around each number of max_seq
         # Notice that number can only be place adjacent to one of the numbers in max_seq 
-        actions = [(row, col, number) for (row, col) in board.get_best_positions(number, max_seq)]
-
-        return actions
+        return [(row, col, number) for (row, col) in board.get_best_positions(number, max_seq) 
+                if self.check_valid(board, number, missing_numbers, row, col)]
 
     def result(self, state: NumbrixState, action):
         """ Retorna o estado resultante de executar a 'action' sobre
@@ -257,13 +267,14 @@ class Numbrix(Problem):
         board = node.state.board
         total = 0
         for space in board.get_empty_positions():
-            total += (4-len(board.get_empty_neighbours(*space)))**2
+            total += (4-len(board.get_empty_neighbours_positions(*space)))**2
         return total
 
 
 def main():
     # Lê tabuleiro do ficheiro
     board = Board.parse_instance(sys.argv[1])
+
     # Cria uma instancia de Numbrix
     problem = Numbrix(board)
 
