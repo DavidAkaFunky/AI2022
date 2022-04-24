@@ -8,7 +8,6 @@
 
 import sys
 
-from numpy import diff
 from search import Problem, Node, astar_search, breadth_first_tree_search, depth_first_graph_search, \
     depth_first_tree_search, greedy_search, recursive_best_first_search
 from copy import deepcopy
@@ -32,9 +31,9 @@ class Board:
     def __init__(self, board: list, dim: int) -> None:
 
         # Basic board attributes
-        self.board = board
-        self.neighbours_positions = []
-        self.dim = dim
+        
+        self.board = board                        
+        self.dim = dim   
         
         # Auxiliary attributes
 
@@ -50,10 +49,8 @@ class Board:
         # Find all missing numbers / Find all numbers position
         # Fill missing_numbers_neighbours
         for row in range(dim):
-            self.neighbours_positions.append([])
             for col in range(dim):
                 number = board[row][col]
-                self.add_neighbours_positions(row, col)
                 # If position is empty
                 if number == 0:
                     self.empty_pos.append((row, col))
@@ -63,7 +60,7 @@ class Board:
 
         # List of missing numbers
         # [number]
-        self.missing_numbers = self.get_number_choice_order(list(self.positions.keys()))
+        self.missing_numbers = self.get_number_choice_order(tuple(self.positions.keys()))
 
     def get_board(self) -> list:
         return self.board
@@ -91,7 +88,7 @@ class Board:
         Finds best missing numbers to place in the board.
         Only used to fill missing_number list in the constructor. 
         """
-        used_numbers = sorted(used_numbers + [0, self.dim**2 + 1])
+        used_numbers = sorted(used_numbers + (0, self.dim**2 + 1))
         order = []
         worse_used_numbers_dict = {}
         for i in range(len(used_numbers) - 1):
@@ -101,6 +98,7 @@ class Board:
                 order += list(range(number + 1, number + difference))
             if difference > 2:
                 worse_used_numbers_dict[number] = difference
+        worse_used_numbers_dict = dict(sorted(worse_used_numbers_dict.items(), key=lambda x:x[1]))
         final = []
         for number in worse_used_numbers_dict:
             if number == 0:
@@ -112,54 +110,84 @@ class Board:
     def get_number_seq(self, number: int) -> list:
         """ Devolve uma lista com todos os valores imediatamente adjacentes ao numero. """
 
-        res = []
+        res = ()
         if number > 1:
-            res.append(number - 1)
+            res += (number - 1,)
         if number < self.dim ** 2:
-            res.append(number + 1)
+            res += (number + 1,)
         return res
+
+    def adjacent_vertical_numbers(self, row: int, col: int) -> (int, int):
+        """ Devolve os valores imediatamente abaixo e acima, 
+        respectivamente. """
+
+        numbers = ()
+        for x in (row - 1, row + 1):
+            if x >= 0 and x < self.dim:
+                numbers += (self.get_number(x, col),)
+        return numbers
+
+    def adjacent_horizontal_numbers(self, row: int, col: int) -> (int, int):
+        """ Devolve os valores imediatamente à esquerda e à direita, 
+        respectivamente. """
+
+        numbers = ()
+        for y in (col - 1, col + 1):
+            if y >= 0 and y < self.dim:
+                numbers += (self.get_number(row, y),)
+        return numbers
 
     def get_neighbours(self, row: int, col: int):
         """ Devolve os valores vizinhos da respetiva posição. """
 
-        return [self.get_number(y, x) for (y, x) in self.get_neighbours_positions(row, col)]
+        return self.adjacent_vertical_numbers(row, col) + self.adjacent_horizontal_numbers(row, col)
 
     def get_neighbours_positions(self, row: int, col: int) -> list:
-        """ Devolve as posicoes que estao por preencher em redor
-        da respetiva posicao. """
+        """ Devolve as posicoes que estao em redor da respetiva posicao. """
 
-        return self.get_empty_neighbours_positions(row, col) + self.get_filled_neighbours_positions(row, col)
-
-    def add_neighbours_positions(self, row: int, col: int):
-        """ Devolve as posicoes que estao por preencher em redor
-        da respetiva posicao. """
-
-        positions = []
+        available_positions = ()
         for y in (col - 1, col + 1):
             if 0 <= y < self.dim:
-                positions.append((row, y))
+                available_positions += ((row, y),)
         for x in (row - 1, row + 1):
             if 0 <= x < self.dim:
-                positions.append((x, col))
-        self.neighbours_positions[row].append(positions)
+                available_positions += ((x, col),)
 
+        return available_positions
+        
     def get_empty_neighbours_positions(self, row: int, col: int) -> list:
         """ Devolve as posicoes que estao por preencher em redor
         da respetiva posicao. """
-        return [n for n in self.neighbours_positions[row][col] if self.get_number(*n) == 0]
+
+        available_positions = ()
+        for y in (col - 1, col + 1):
+            if 0 <= y < self.dim and self.get_number(row, y) == 0:
+                available_positions += ((row, y),)
+        for x in (row - 1, row + 1):
+            if 0 <= x < self.dim and self.get_number(x, col) == 0:
+                available_positions += ((x, col),)
+
+        return available_positions
 
     def get_filled_neighbours_positions(self, row: int, col: int) -> list:
-        """ Devolve as posicoes que estao por preencher em redor
+        """ Devolve as posicoes que estao preenchidas em redor
         da respetiva posicao. """
 
-        return [n for n in self.neighbours_positions[row][col] if self.get_number(*n) != 0]
+        available_positions = ()
+        for y in (col - 1, col + 1):
+            if 0 <= y < self.dim and self.get_number(row, y) != 0:
+                available_positions += ((row, y),)
+        for x in (row - 1, row + 1):
+            if 0 <= x < self.dim and self.get_number(x, col) != 0:
+                available_positions += ((x, col),)
+
+        return available_positions
 
     def add_number(self, row: int, col: int, number: int) -> None:
         """ Atualiza o valor na respetiva posicao do tabuleiro ."""
-        position = (row, col)
         self.board[row][col] = number
-        self.positions[number] = position
-        self.empty_pos.remove(position)
+        self.positions[number] = (row, col)
+        self.empty_pos.remove((row, col))
         
     def manhattan_condition(self, number, neighbour) -> bool:
         """
@@ -182,11 +210,11 @@ class Board:
             neighbour_number = self.get_number(row, col)
             if len(self.get_empty_neighbours_positions(row, col)) == 1:
                 if neighbour_number != 0:                
-                    for number_seq in self.get_number_seq(neighbour_number) + [number]:
+                    for number_seq in self.get_number_seq(neighbour_number) + (number,):
                         if number_seq in self.missing_numbers:
                             return False
                 else:
-                    neighbour_neighbours = sorted(self.get_neighbours(row, col) + [0, number, self.dim**2 + 1])
+                    neighbour_neighbours = sorted(self.get_neighbours(row, col) + (0, number, self.dim**2 + 1))
                     has_seq = False
                     for i in range(len(neighbour_neighbours)-1):
                         number = neighbour_neighbours[i]
@@ -197,17 +225,6 @@ class Board:
                         return False
             
         return True
-
-    def get_best_positions(self, number, max_seq) -> list:
-
-        # Create a set which is an intersection of all available positions for each number in max_seq
-        # This positions are the only ones that can be used to place the number
-        possible_positions = self.get_empty_neighbours_positions(*self.positions[max_seq[0]])
-        if len(max_seq) == 2:
-            possible_positions = [pos for pos in possible_positions if pos in set(self.get_empty_neighbours_positions(*self.positions[max_seq[1]]))]
-            
-        # Verify that for each available position, the distance to every number is valid
-        return [x for x in possible_positions if self.manhattan_condition(number, x) and self.locked_condition(number, x)]
 
     def print_board(self):
         """ Imprime o tabuleiro na consola. """
@@ -244,15 +261,33 @@ class Numbrix(Problem):
 
         board = state.board
         missing_numbers = board.get_missing_numbers()
-        number = missing_numbers.pop(0)
-        
-        # List of possible sequence for number based on already placed numbers
-        # [number-1,number+1] or [number-1] or [number+1]
-        max_seq = [x for x in board.get_number_seq(number) if x not in missing_numbers]
+        choice = missing_numbers[0]
+        max_seq = [x for x in board.get_number_seq(choice) if x not in missing_numbers]
+        choice_possible_positions = board.get_empty_neighbours_positions(*board.positions[max_seq[0]])
+        if len(max_seq) == 2:
+            choice_possible_positions = [pos for pos in choice_possible_positions if pos in set(board.get_empty_neighbours_positions(*board.positions[max_seq[1]]))]
 
+        for number in missing_numbers[1:]:    
+        
+            # List of possible sequence for number based on already placed numbers
+            # [number-1,number+1] or [number-1] or [number+1]
+            max_seq = [x for x in board.get_number_seq(number) if x not in missing_numbers]
+            if len(max_seq) == 0:
+                continue
+            # Create a set which is an intersection of all available positions for each number in max_seq
+            # This positions are the only ones that can be used to place the number
+            possible_positions = board.get_empty_neighbours_positions(*board.positions[max_seq[0]])
+            if len(max_seq) == 2:
+                possible_positions = [pos for pos in possible_positions if pos in set(board.get_empty_neighbours_positions(*board.positions[max_seq[1]]))]
+            if len(possible_positions) == 1:
+                choice = number
+                choice_possible_positions = possible_positions
+                break
+        missing_numbers.remove(choice)
+        best_positions = [x for x in choice_possible_positions if board.manhattan_condition(choice, x) and board.locked_condition(choice, x)]
         # List of actions based of available positions around each number of max_seq
         # Notice that number can only be place adjacent to one of the numbers in max_seq 
-        return [(row, col, number) for (row, col) in board.get_best_positions(number, max_seq)]
+        return [(row, col, choice) for (row, col) in best_positions]
 
     def result(self, state: NumbrixState, action):
         """ Retorna o estado resultante de executar a 'action' sobre
@@ -269,24 +304,24 @@ class Numbrix(Problem):
     def h(self, node: Node):
         board = node.state.board
         total = 0
-        for space in board.get_empty_positions():
-            total += len(board.get_filled_neighbours_positions(*space))**2
+        filled_positions = board.get_positions()
+        for space in filled_positions:
+            total += (len(board.get_empty_neighbours_positions(*filled_positions[space]))/len(filled_positions))**2
         return total
 
 
 def main():
-    for _ in range(10):
-        # Lê tabuleiro do ficheiro
-        board = Board.parse_instance(sys.argv[1])
+    # Lê tabuleiro do ficheiro
+    board = Board.parse_instance(sys.argv[1])
 
-        # Cria uma instancia de Numbrix
-        problem = Numbrix(board)
+    # Cria uma instancia de Numbrix
+    problem = Numbrix(board)
 
-        # Obtem o nó solução usando A*
-        #goal_node = depth_first_tree_search(problem)
-        goal_node = greedy_search(problem, problem.h) # 3 Memory Limit (com heu ^2)
-        #goal_node = astar_search(problem)  # 2 Memory Limit, 2 Time Limit (com heu ^2 perhaps)
-        #goal_node = recursive_best_first_search(problem)
+    # Obtem o nó solução usando A*
+    goal_node = depth_first_tree_search(problem)
+    #goal_node = greedy_search(problem, problem.h) # 3 Memory Limit (com heu ^2)
+    #goal_node = astar_search(problem)  # 2 Memory Limit, 2 Time Limit (com heu ^2 perhaps)
+    #goal_node = recursive_best_first_search(problem)
     # Mostra tabuleiro final
     goal_node.state.board.print_board()
 
