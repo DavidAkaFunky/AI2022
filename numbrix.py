@@ -6,10 +6,10 @@
 # 95550 David Belchior
 # 95562 Diogo Santos
 
-from dis import findlabels
-import sys
 
+import sys
 import pickle
+
 from search import Problem, Node, depth_first_tree_search, greedy_search, astar_search
 from utils import manhattan_distance
 
@@ -29,26 +29,25 @@ class Board:
 
     def __init__(self, board: list, dim: int) -> None:
 
-        # Basic board attributes
+        # Atributos basicos
         
         self.board = board                        
         self.dim = dim   
         
-        # Auxiliary attributes
+        # Atributos adicionais
 
-        # Dictionary with the positions of the numbers
-        # {number: (row, col)}
+        # Dicionario que guarda as posicoes de cada numero
+        # {numero: (linha, coluna)}
         self.positions = {}
         self.create_number_seq()
         self.create_neighbours_positions()
         
-        # List of empty positions
-        # [(row, col)]
+        # Lista de posicoes vazias
+        # [(linha, coluna)]
         self.empty_pos = []
 
-        # Objective:
-        # Find all missing numbers / Find all numbers position
-        # Fill missing_numbers_neighbours
+        # Objetivo:
+        # Encontrar todos os numeros em falta / Encontrar a posicao de todos os numeros
         for row in range(dim):
             for col in range(dim):
                 number = board[row][col]
@@ -59,14 +58,13 @@ class Board:
                 else:
                     self.positions[number] = (row, col)
 
-        # List of missing numbers
-        # [number]
+        # Lista de numeros em falta
+        # [numero]
         self.missing_numbers = self.get_number_choice_order(list(self.positions.keys()))
 
     def get_number_choice_order(self, used_numbers):
         """ 
-        Finds best missing numbers to place in the board.
-        Only used to fill missing_number list in the constructor. 
+        Encontra o melhor numero em falta para colocar no board
         """
         used_numbers = sorted(used_numbers + [0, self.dim**2 + 1])
         first = []
@@ -103,7 +101,6 @@ class Board:
 
     def get_neighbours(self, row: int, col: int):
         """ Devolve os valores vizinhos da respetiva posição. """
-
         return [self.board[y][x] for (y, x) in neighbours_positions[(row, col)]]
 
     def create_neighbours_positions(self) -> list:
@@ -122,13 +119,11 @@ class Board:
     def get_empty_neighbours_positions(self, row: int, col: int) -> list:
         """ Devolve as posicoes que estao por preencher em redor
         da respetiva posicao. """
-
         return [(y, x) for (y, x) in neighbours_positions[(row, col)] if self.board[y][x] == 0]
 
     def get_filled_neighbours_positions(self, row: int, col: int) -> list:
         """ Devolve as posicoes que estao preenchidas em redor
         da respetiva posicao. """
-
         return [(y, x) for (y, x) in neighbours_positions[(row, col)] if self.board[y][x] != 0]
 
     def add_number(self, row: int, col: int, number: int) -> None:
@@ -139,18 +134,18 @@ class Board:
         
     def manhattan_condition(self, number, neighbour) -> bool:
         """
-        Verify if number is a valid distance from every other number in the board.
+        Verifica se um numero esta a uma distancia valida de cada numero no board
         """
         for position in self.positions:
-            # abs       -> distance in terms of integers            (e.g. 7-5 = 2)
-            # manhattan -> distance in terms of moves in the board  (e.g. (3,1)-(2,2)=(1,1)=2)
+            # abs       -> distancia em termos de valores absolutos           (e.g. 7-5 = 2)
+            # manhattan -> distancia em termos de passos no board  (e.g. (3,1)-(2,2)=(1,1)=2)
             if abs(number-position) < manhattan_distance(self.positions[position], neighbour):
                 return False
         return True
     
     def locked_condition(self, number, position) -> bool:
         """
-        Verify if number's neighbours don't get locked
+        Verifica que os vizinhos do numero nao ficam presos
         e.g 1   2   3 , 7 would be "locked" 
             4   7   9
         """
@@ -183,7 +178,6 @@ class Board:
     def parse_instance(filename: str):
         """ Lê o ficheiro cujo caminho é passado como argumento e retorna
         uma instância da classe Board. """
-
         with open(filename, "r") as f:
             lines = f.readlines()
             dim = int(lines[0])
@@ -210,6 +204,7 @@ class Numbrix(Problem):
         board = state.board
         missing_numbers = board.missing_numbers
         choice = missing_numbers[0]
+
         max_seq = [x for x in number_seqs[choice] if x not in missing_numbers]
         choice_possible_positions = board.get_empty_neighbours_positions(*board.positions[max_seq[0]])
         chosen = False
@@ -220,8 +215,8 @@ class Numbrix(Problem):
         if not chosen:
             for number in missing_numbers[1:]:    
             
-                # List of possible sequence for number based on already placed numbers
-                # [number-1,number+1] or [number-1] or [number+1]
+                # Lista de numeros possiveis para cada numero baseado nos numeros que ja foram preenchidos
+                # [numero-1,numero+1] or [numero-1] or [numero+1]
                 max_seq = [x for x in number_seqs[number] if x not in missing_numbers]
                 if len(max_seq) == 0:
                     continue
@@ -238,8 +233,6 @@ class Numbrix(Problem):
 
         missing_numbers.remove(choice)
 
-        # List of actions based of available positions around each number of max_seq
-        # Notice that number can only be place adjacent to one of the numbers in max_seq 
         return [(*x, choice) for x in choice_possible_positions if board.locked_condition(choice, x)]
 
     def result(self, state: NumbrixState, action):
@@ -272,9 +265,7 @@ def main():
 
     # Obtem o nó solução usando A*
     goal_node = depth_first_tree_search(problem) # 2 Time Limit
-    #goal_node = greedy_search(problem, problem.h) # 
-    #goal_node = astar_search(problem)  # 
-    #goal_node = recursive_best_first_search(problem)
+
     # Mostra tabuleiro final
     goal_node.state.board.print_board()
 
