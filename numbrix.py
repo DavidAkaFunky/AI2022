@@ -212,32 +212,35 @@ class Numbrix(Problem):
         choice = missing_numbers[0]
         max_seq = [x for x in number_seqs[choice] if x not in missing_numbers]
         choice_possible_positions = board.get_empty_neighbours_positions(*board.positions[max_seq[0]])
+        chosen = False
         if len(max_seq) == 2:
             choice_possible_positions = [pos for pos in choice_possible_positions if pos in set(board.get_empty_neighbours_positions(*board.positions[max_seq[1]]))]
+        if len(choice_possible_positions) == 1:
+            chosen = True
+        if not chosen:
+            for number in missing_numbers[1:]:    
+            
+                # List of possible sequence for number based on already placed numbers
+                # [number-1,number+1] or [number-1] or [number+1]
+                max_seq = [x for x in number_seqs[number] if x not in missing_numbers]
+                if len(max_seq) == 0:
+                    continue
 
-        for number in missing_numbers[1:]:    
-        
-            # List of possible sequence for number based on already placed numbers
-            # [number-1,number+1] or [number-1] or [number+1]
-            max_seq = [x for x in number_seqs[number] if x not in missing_numbers]
-            if len(max_seq) == 0:
-                continue
-
-            # Create a set which is an intersection of all available positions for each number in max_seq
-            # This positions are the only ones that can be used to place the number
-            possible_positions = board.get_empty_neighbours_positions(*board.positions[max_seq[0]])
-            if len(max_seq) == 2:
-                possible_positions = [pos for pos in possible_positions if pos in set(board.get_empty_neighbours_positions(*board.positions[max_seq[1]]))]
-            if len(possible_positions) == 1:
-                choice = number
-                choice_possible_positions = possible_positions
-                break
+                # Create a set which is an intersection of all available positions for each number in max_seq
+                # This positions are the only ones that can be used to place the number
+                possible_positions = board.get_empty_neighbours_positions(*board.positions[max_seq[0]])
+                if len(max_seq) == 2:
+                    possible_positions = [pos for pos in possible_positions if pos in set(board.get_empty_neighbours_positions(*board.positions[max_seq[1]]))]
+                if len(possible_positions) == 1:
+                    choice = number
+                    choice_possible_positions = possible_positions
+                    break
 
         missing_numbers.remove(choice)
 
         # List of actions based of available positions around each number of max_seq
         # Notice that number can only be place adjacent to one of the numbers in max_seq 
-        return [(*x, choice) for x in choice_possible_positions if board.manhattan_condition(choice, x) and board.locked_condition(choice, x)]
+        return [(*x, choice) for x in choice_possible_positions if board.locked_condition(choice, x)]
 
     def result(self, state: NumbrixState, action):
         """ Retorna o estado resultante de executar a 'action' sobre

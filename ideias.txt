@@ -1,3 +1,0 @@
-Heurísticas possíveis:
-- Nº de opções possíveis no tabuleiro (não distingue bem qdo os números estão afastados uns dos outros)
-- Maior sequência de números vizinhos
