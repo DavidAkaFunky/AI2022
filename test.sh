@@ -1,5 +1,5 @@
 FOLDERNAME="tests_final_public"
-END=10
+END=12
 
 rm -rf "$1.txt"
 for i in $(seq 1 $END); do        
