@@ -36,18 +36,18 @@ class Board:
         
         # Atributos adicionais
 
-        # Dicionario que guarda as posicoes de cada numero
-        # {numero: (linha, coluna)}
+        # Dicionario que guarda as posições de cada número
+        # {número: (linha, coluna)}
         self.positions = {}
         self.create_number_seq()
         self.create_neighbours_positions()
         
-        # Lista de posicoes vazias
+        # Lista de posições vazias
         # [(linha, coluna)]
         self.empty_pos = []
 
         # Objetivo:
-        # Encontrar todos os numeros em falta / Encontrar a posicao de todos os numeros
+        # Encontrar todos os números em falta / Encontrar a posição de todos os números
         for row in range(dim):
             for col in range(dim):
                 number = board[row][col]
@@ -58,14 +58,12 @@ class Board:
                 else:
                     self.positions[number] = (row, col)
 
-        # Lista de numeros em falta
-        # [numero]
+        # Lista de números em falta
+        # [número]
         self.missing_numbers = self.get_number_choice_order(list(self.positions.keys()))
 
     def get_number_choice_order(self, used_numbers):
-        """ 
-        Encontra o melhor numero em falta para colocar no board
-        """
+        """ Encontra o melhor número em falta para colocar no board. """
         used_numbers = sorted(used_numbers + [0, self.dim**2 + 1])
         first = []
         next = []
@@ -89,22 +87,8 @@ class Board:
                 first += list(range(number + 1, number + worse_used_numbers_dict[number]))
         return first + next + final
 
-    def create_number_seq(self):
-        """ Devolve uma lista com todos os valores imediatamente adjacentes ao numero. """
-        for number in range(1, self.dim ** 2 + 1):
-            res = []
-            if number > 1:
-                res.append(number - 1)
-            if number < self.dim ** 2:
-                res.append(number + 1)
-            number_seqs[number] = res
-
-    def get_neighbours(self, row: int, col: int):
-        """ Devolve os valores vizinhos da respetiva posição. """
-        return [self.board[y][x] for (y, x) in neighbours_positions[(row, col)]]
-
     def create_neighbours_positions(self) -> list:
-        """ Devolve as posicoes que estao em redor da respetiva posicao. """
+        """ Devolve as posições que estão em redor da respetiva posição. """
         for row in range(self.dim):
             for col in range(self.dim):
                 available_positions = []
@@ -115,42 +99,70 @@ class Board:
                     if 0 <= x < self.dim:
                         available_positions.append((x, col))
                 neighbours_positions[(row, col)] = available_positions
+
+    def create_number_seq(self):
+        """ Devolve uma lista com todos os valores imediatamente adjácentes ao número. """
+        for number in range(1, self.dim ** 2 + 1):
+            res = []
+            if number > 1:
+                res.append(number - 1)
+            if number < self.dim ** 2:
+                res.append(number + 1)
+            number_seqs[number] = res
+        
+    def adjacent_vertical_numbers(self, row: int, col: int) -> (int, int):
+        """ Devolve os valores imediatamente abaixo e acima, 
+        respectivamente. """
+
+        numbers = ()
+        for x in (row - 1, row + 1):
+            if x < 0 or x >= self.dim:
+                numbers += (None,)
+            else:
+                numbers += (self.get_number(x, col),)
+        return numbers
+
+    def adjacent_horizontal_numbers(self, row: int, col: int) -> (int, int):
+        """ Devolve os valores imediatamente à esquerda e à direita, 
+        respectivamente. """
+
+        numbers = ()
+        for y in (col - 1, col + 1):
+            if y < 0 or y >= self.dim:
+                numbers += (None,)
+            else:
+                numbers += (self.get_number(row, y),)
+        return numbers
+
+    def get_number(self, row: int, col: int) -> int:
+        return self.board[row][col]
+
+    def get_neighbours(self, row: int, col: int):
+        """ Devolve os valores vizinhos da respetiva posição. """
+        return [self.get_number(y, x) for (y, x) in neighbours_positions[(row, col)]]
         
     def get_empty_neighbours_positions(self, row: int, col: int) -> list:
-        """ Devolve as posicoes que estao por preencher em redor
-        da respetiva posicao. """
-        return [(y, x) for (y, x) in neighbours_positions[(row, col)] if self.board[y][x] == 0]
+        """ Devolve as posições que estão por preencher em redor
+        da respetiva posição. """
+        return [(y, x) for (y, x) in neighbours_positions[(row, col)] if self.get_number(y, x) == 0]
 
     def get_filled_neighbours_positions(self, row: int, col: int) -> list:
-        """ Devolve as posicoes que estao preenchidas em redor
-        da respetiva posicao. """
-        return [(y, x) for (y, x) in neighbours_positions[(row, col)] if self.board[y][x] != 0]
+        """ Devolve as posições que estão preenchidas em redor
+        da respetiva posição. """
+        return [(y, x) for (y, x) in neighbours_positions[(row, col)] if self.get_number(y, x) != 0]
 
     def add_number(self, row: int, col: int, number: int) -> None:
-        """ Atualiza o valor na respetiva posicao do tabuleiro ."""
+        """ Atualiza o valor na respetiva posição do tabuleiro."""
         self.board[row][col] = number
         self.positions[number] = (row, col)
         self.empty_pos.remove((row, col))
-        
-    def manhattan_condition(self, number, neighbour) -> bool:
-        """
-        Verifica se um numero esta a uma distancia valida de cada numero no board
-        """
-        for position in self.positions:
-            # abs       -> distancia em termos de valores absolutos           (e.g. 7-5 = 2)
-            # manhattan -> distancia em termos de passos no board  (e.g. (3,1)-(2,2)=(1,1)=2)
-            if abs(number-position) < manhattan_distance(self.positions[position], neighbour):
-                return False
-        return True
     
     def locked_condition(self, number, position) -> bool:
-        """
-        Verifica que os vizinhos do numero nao ficam presos
-        e.g 1   2   3 , 7 would be "locked" 
-            4   7   9
-        """
+        """ Verifica que os vizinhos do número não ficam presos invalidamente
+        p.ex 1   2   3 , 7 estaria bloqueado
+             4   7   9                                                   """
         for (row, col) in neighbours_positions[position]:
-            neighbour_number = self.board[row][col]
+            neighbour_number = self.get_number(row, col)
             if len(self.get_empty_neighbours_positions(row, col)) == 1:
                 if neighbour_number != 0:                
                     for number_seq in number_seqs[neighbour_number] + [number]:
@@ -215,14 +227,14 @@ class Numbrix(Problem):
         if not chosen:
             for number in missing_numbers[1:]:    
             
-                # Lista de numeros possiveis para cada numero baseado nos numeros que ja foram preenchidos
-                # [numero-1,numero+1] or [numero-1] or [numero+1]
+                # Lista de números possiveis para cada número baseado nos números que já foram preenchidos
+                # [número-1,número+1] or [número-1] or [número+1]
                 max_seq = [x for x in number_seqs[number] if x not in missing_numbers]
                 if len(max_seq) == 0:
                     continue
-
-                # Create a set which is an intersection of all available positions for each number in max_seq
-                # This positions are the only ones that can be used to place the number
+                
+                # Cria uma lista que resulta da interseção de todos os vizinhos vazios de cada número em max_seq
+                # Estas são as únicas posições válidas à partida para o número em causa
                 possible_positions = board.get_empty_neighbours_positions(*board.positions[max_seq[0]])
                 if len(max_seq) == 2:
                     possible_positions = [pos for pos in possible_positions if pos in set(board.get_empty_neighbours_positions(*board.positions[max_seq[1]]))]
@@ -260,11 +272,13 @@ def main():
     # Lê tabuleiro do ficheiro
     board = Board.parse_instance(sys.argv[1])
 
-    # Cria uma instancia de Numbrix
+    # Cria uma instância de Numbrix
     problem = Numbrix(board)
 
-    # Obtem o nó solução usando A*
-    goal_node = depth_first_tree_search(problem) # 2 Time Limit
+    # Obtém o nó solução usando DFS
+    goal_node = depth_first_tree_search(problem)
+    # goal_node = greedy_search(problem, problem.h) # 
+    # goal_node = astar_search(problem, display=True)
 
     # Mostra tabuleiro final
     goal_node.state.board.print_board()
